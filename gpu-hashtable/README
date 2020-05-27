@@ -1,0 +1,105 @@
+=========================== Tema 3 - CUDA Hashtable ============================
+Nume: Craciunoiu Cezar
+Grupa: 334CA
+
+1. Implementare solutie
+Pentru implementarea solutiei s-au completat functiile din scheletul oferit,
+dar s-au creat si unele noi pentru a defini comportamentul programului pe
+placa video, implementandu-se metoda de linear probing pe un hashtable.
+Astfel ca, acestea sunt grupate cate doua si realizeaza fiecare
+din cele 3 functii ale hashtable-ului:
+    a. Inserare elemente
+    Pentru inserarea elementelor, mai intai pe CPU se calculeaza daca noile
+    elemente incap in hashtable, pentru a se pastra un factor de incarcare
+    rezonabil (daca nu incap se face resize). Dupa aceea se aloca spatiu pentru
+    array-urile date ca parametru si se apeleaza functia de GPU.
+    Se creaza atatea thread-uri cate elemente se introduc.
+    S-a observat ca viteza maxima este obtinuta atunci cand blocurile
+    de thread-uri au dimensiunea maxima posibila, adica 1024.
+    In functia de pe device se calculeaza mai intai hash-ul cheii si apoi se
+    cauta un loc liber de la hash pe rand in toata tabela.
+    La fiecare pas se foloseste functia atomica de Compare-And-Set pentru a
+    incerca pozitiile. Precum s-a explicat si in cod, prin aceasta se evita
+    problemele de sincronizare dar si folosirea mutex-urilor sau a altor
+    artificii. Daca s-a inlocuit cheia, se inlocuieste si valoarea fara,
+    probleme, deoarece intr-un batch cheile sunt unicate.
+    La final se elibereaza memoria folosita pentru array-uri.
+
+    b. Extragere elemente
+    Pentru extragerea elementelor se urmeaza un proces asemanator ca la
+    inserare pentru initializare.
+    Diferenta apare pe GPU. Nu mai este nevoie sa se seteze nimic, deci doar se
+    calculeaza hash-ul si se parcurge tabela pana se gaseste cheia dorita. Daca
+    se gaseste, se salveaza in vectorul primit la parametri, daca nu, atunci
+    se trece -1.
+
+    c. Redimensionare
+    Redimensionarea se face de fiecare data cand tabela depaseste o incarcare
+    de 85%. La general, ideea este ca se aloca spatiu pentru tabela noua si se
+    insereaza fiecare element din tabela veche in tabela noua, recalculandu-se
+    hash-ul. Pe partea de GPU este aproape identic cu functia de inserare,
+    diferenta fiind doar la parametri.
+
+2. Stocare Hashtable in VRAM
+Pentru structurarea in memorie s-au folosit structuri: entry_t si hashtable_t.
+    a. entry_t este o structura de tip pereche cheie-valoare care retine
+    fiecare intrare in hashtable.
+    b. hashtable_t este tabela in sine, care contine un pointer la un vector
+    de tip cheie-valoare, dar si doi intregi care retin numarul maxim de
+    elemente respectiv numarul curent de elemente.
+In structura hashtable_t, array-ul entries retine un pointer la un array tinut
+pe GPU. La fiecare apel de functie se aloca spatiu pentru parametri pe GPU si
+se trimit datele. Acolo, ele sunt inserate in tabela si, dupa aceea, se
+elibereaza spatiul.
+Tabela este tinuta in VRAM pana la iesirea din scope, cand se apeleaza
+destructorul ce elibereaza memoria de pe VRAM.
+
+3. Output performante obtinute
+In urma rularii programului de benchmark se obtine:
+-------------- Test T1 --------------
+OK       +10 pts         HASH_BATCH_INSERT, 1000000, 50, 80
+OK       +10 pts         HASH_BATCH_GET, 1000000, inf, 80.0051
+TOTAL    +20 pts
+
+-------------- Test T2 --------------
+OK       +5 pts  HASH_BATCH_INSERT, 2000000, 100, 80
+OK       +5 pts  HASH_BATCH_GET, 2000000, 100, 80.0026
+TOTAL    +10 pts
+
+-------------- Test T3 --------------
+OK       +5 pts  HASH_BATCH_INSERT, 2000000, 66.6667, 80
+OK       +5 pts  HASH_BATCH_INSERT, 2000000, 100, 80
+OK       +5 pts  HASH_BATCH_GET, 2000000, 100, 80.0013
+OK       +5 pts  HASH_BATCH_GET, 2000000, 200, 80.0013
+TOTAL    +20 pts
+
+-------------- Test T4 --------------
+OK       +5 pts  HASH_BATCH_INSERT, 2500000, inf, 80
+OK       +5 pts  HASH_BATCH_INSERT, 2500000, inf, 80
+OK       +5 pts  HASH_BATCH_INSERT, 2500000, inf, 80
+OK       +5 pts  HASH_BATCH_INSERT, 2500000, 50, 80
+OK       +5 pts  HASH_BATCH_GET, 2500000, inf, 80.0005
+OK       +5 pts  HASH_BATCH_GET, 2500000, 125, 80.0005
+OK       +5 pts  HASH_BATCH_GET, 2500000, 125, 80.0005
+OK       +5 pts  HASH_BATCH_GET, 2500000, 250, 80.0005
+TOTAL    +40 pts
+
+
+TOTAL gpu_hashtable  90/90
+
+De asemenea, in urma cronometrarii pe GPU se obtin timpii:
+real    0m4.266s
+user    0m2.330s
+sys     0m1.718s
+
+Din aceste date se observa urmatoarele:
+    - Jumatate din timpul de rulare este petrecut in apeluri de sistem, deci
+    jumatate din timp (cel mai probabil) se aloca si se dealoca memorie pe
+    placa video. In restul de timp se realizeaza inserearea/extragerea efectiva.
+    Este de asteptat ca majoritatea timpului consumat sa fie in Memcpy/Memset,
+    deoarece datele trebuie sa parcurga un drum lung cu multe potentiale
+    limitari (CPU->Motherboard->RAM->Motherboard->CPU->Motherboard->GPU).
+    - Load factor-ul, precum a fost precizat, se mentine la 80-85%, tabela
+    redimensionandu-se la nevoie.
+    - Timpul de rulare pe GPU este mult mai bun decat rularea pe CPU, dupa cum
+    era si de asteptat (chiar de 7-8 ori mai bun).

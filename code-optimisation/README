@@ -1,0 +1,112 @@
+=================================== Tema 2 ====================================
+Nume: Craciunoiu Cezar
+Grupa: 334CA
+
+Partea I - blas:
+In aceasta parte s-au folosit functiile deja implementate de calcul pe vectori
+si matrici. Pentru inceput, s-a copiat informatia in spatii auxiliare, folosite
+la inmultiri. Apoi, s-a realizat pe rand: inmultirea din stanga sumei,
+ridicarea la putere si inmultirea din dreapta sumei. In final s-a realizat
+adunarea celor 2 pseudo-vectori (matrici liniarizate) si s-a returnat
+rezultatul. Functia de inmultire cu matrici triangulare ofera toate operatiile
+necesare realizarii calculului, cu aceasta putand sa se realizeze si
+transpunerea si ridicarea la putere cat si inmultirea propriu-zisa.
+
+Partea II - neopt:
+Pentru implementarea proprie s-a incercat o modularizare cat mai mare a codului,
+chit ca acest lucru ar putea duce la mici pierderi de performanta. Exista cate
+o functie pentru: transpunere, inmultire, ridicare la putere si suma.
+Pe rand, complexitatea fiecareia:
+ - transpunerea: se foloseste de proprietatea ca matricile primite sunt
+    triangulare, deci se realizeaza o copiere -> O(N^2 / 2)
+ - suma: adunare element cu element a doua matrici -> O(N^2)
+ - ridicare la putere: inmultire a doua matrici triangulare -> O(N^3) amortizat,
+    fiind foarte apropiat de N^2
+ - inmultire: doar una din matrici este triangulara -> O(N^3 / 2)
+
+Partea III - opt_m:
+Pentru partea de optimizare s-au realizat urmatoarele:
+ - S-au inlocuit toti indecsii din functii, care realizau operatii repetate cu
+    registre, pentru a o crestere semnificativa a vitezei.
+ - La inmultirea matricilor, s-a folosit o variabila auxiliara, in care se
+    calculeaza rezultatul intermediar, pentru a reducere accesele la memorie.
+ - La adunarea matricilor s-a realizat desfasurarea buclei interioare,
+    acest lucru scazand numarul de comparatii realizate de for.
+ - S-a eliminat necesitatea unuia din spatiile aditionale, scazand din
+    modularitatea codului, dar crescand eficienta, deoarece se realizeaza
+    mai putine alocari de memorie.
+ - S-au modificat parametrii ca fiind de tip const, oferind compilatorului sa
+    fie mai flexibil in procesarea codului.
+
+Partea IV - opt_f_extra:
+Pentru partea de optimizare aditionala s-au adaugat o multitudine de parametrii
+in plus la compilare. Acestia vor fi parcursi pe rand pe scurt:
+ -funroll-loops - Una din cele mai importante optimizari. Aceasta realizeaza
+    automat desfasurarea buclelor, cat si eliminarea lor acolo unde se poate
+    (nu este cazul in aceasta tema). Se intelege de ce poate oferi viteze
+    semnificativ mai mari.
+ -funsafe-math-optimizations - Face presupunerea ca inputul si outputul
+    calculelor cu virgula este mereu corect, sarind peste verificari. Rezulta
+    astfel mai multa viteza.
+ -ffinite-math-only - Face inlocuiri de genul (a == a -> 1 sau a * 1 -> a),
+    deci inlocuieste multe din calcule. Rezulta si mai multa viteza.
+ -fno-rounding-math - Dupa cum ii spune si numele, nu se mai incearca
+    rotunjirea numerelor cu virgula (nu este o problema deoarece toleranta
+    in cazul de fata este de 0.001), deci mai putin timp pierdut cu calculele.
+ -fno-signaling-nans - Dezactiveaza signal handler-ele pentru impartirea la 0
+    cat si altele. Poate oferi o mica viteza in plus.
+ -fcx-limited-range - Optimizeaza calculele matematice complexe (nu ar trebui
+    sa aiba un efect important in cazul de fata).
+ -fno-signed-zeros - Elimina existenta cazurilor de -0.0 si +0.0, deci executa
+    calculele cu virgula mai rapid.
+ -fno-trapping-math - Dezactiveaza restul de signal handler-e care ar putea sa
+    prinda erori.
+ -fsingle-precision-constant - Inlocuieste constantele cu float-uri nu double.
+    Se reduce traficul de memorie, crescand viteza.
+In urma unor teste repetate s-a observat ca timpul de rulare este imbunatatit cu
+aproximativ ~5-7%. Acesta variaza pentru ca diferentele sunt foarte mici:
+ - tema2_opt_f -> ~3.35-3.4s
+ - tema2_opt_f_extra -> ~3.17-3.185s
+
+Partea V - analiza comparativa a performantei:
+Pentru aceasta parte s-au folosit teste de la 100-1600 pe toate variantele de
+rulare, cu incrementare de 100 de elemente pentru fiecare test. Pentru fiecare
+caz, timpii rezultati sunt media a 5 rulari consecutive. Dupa obtinerea datelor,
+graficere au fost create si unite intr-un singur plot, pentru a se observa
+mai bine eficienta fiecarei implementari, cat si cum se comporta la valori mari
+versus valori mici.
+Mai jos este media rezultatelor pentru fiecare implementare, inainte de a fi
+introduse in grafic.
+
+ELEM	BLAS	    NEOPT	    OPT_M	    OPT_F	    EXTRA
+100	    0.026815	0.016332	0.006642	0.0026262	0.0020714
+200	    0.0072938	0.1074176	0.0480434	0.0200492	0.015427
+300	    0.0207858	0.2835848	0.134873	0.0612924	0.0540068
+400     0.0416486	0.6768172	0.2613336	0.1453656	0.143835
+500     0.0641508	1.3188734	0.5120854	0.2051634	0.1747454
+600     0.1034256	2.2763226	0.8641818	0.4848508	0.4175346
+700     0.1458684	3.5733234	1.3625806	0.8082282	0.5872416
+800     0.2101552	5.351602	2.074458	1.040207	0.9817334
+900     0.2913556	7.3976172	2.8378282	1.342317	1.2194268
+1000	0.384041	9.9605898	3.6651144	1.8682364	1.7521788
+1100	0.5137592	13.5220392	5.1253	    2.4261178	2.298227
+1200	0.6546504	17.4654544	6.518859	3.3597728	3.1919886
+1300	0.8294614	22.8441396	8.841661	4.275393	4.0125922
+1400	1.0286198	28.3820182	10.6909178	5.5007046	5.2527142
+1500	1.2628154	37.1974218	14.9141064	7.3543668	6.9041438
+1600	1.5269676	51.990426	21.2451234	10.5349642	9.9682482
+
+Se observa ca in cel mai mare caz, de 1600 de elemente varianta optimizata
+manual este de 2 ori mai rapida decat cea optimizata. Respectiv, varianta
+optimizata cu -O3 este de 2 ori mai rapida decat cea optimizata manual.
+Varianta cu extra optimizari, reuseste un 5.5% mai bun in cel mai rau caz.
+Varianta BLAS este de departe cea mai buna.
+
+Din analiza pe grafic se observa ca exista un punct de inflexiune la 1200
+respectiv 1400 de elemente. De la 1400 de elemente in sus cresterea este
+aprope exponentiala. Cel mai probabil se depaseste linia de cache pentru valori
+>1200. De asemenea, se observa ca pentru variantele optimizate cu -O3,
+compilatorul a incercat optimizarea cache-ului, cresterea exponentiala
+incepand deabia de la 1500 in sus.
+Versiunea BLAS se pastreaza liniara pentru toate rularile, deoarece foloseste
+parcurgerea matricilor pe blocuri folosind eficient cache-ul.

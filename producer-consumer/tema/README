@@ -1,0 +1,44 @@
+=============================Tema 1 - Marketplace =============================
+Nume: Craciunoiu Cezar
+Grupa: 334CA
+
+In scheletul oferit au fost completate cele trei fisiere date (marketplace.py, consumer.py, producer.py) pentru a se implementa cerinta data, aceea fiind de
+a realiza un Multiple Producer - Multiple Consumer in Python.
+Mai jos vor fi prezentate pe scurt fiecare din cele trei fisiere din arhiva.
+
+Fisierul - producer.py
+
+Este constituit din 2 functii: constructorul si functia de rulare a thread-ului
+Constructorul pur si simplu porneste thread-ul, apeland superconstructorul si
+salveaza parametrii oferiti.
+In functia "run" se itereaza prin lista de obiecte ce pot fi produse si pentru
+fiecare se incearca publicarea obiectului.
+
+Fisierul - consumer.py
+
+In mod asemanator, are tot 2 functii: constructorul si functia "run"
+In acelasi mod, in constructor se salveaza parametrii si se apeleaza
+superconstructorul.
+In functia run, se trece prin cart-urile date si, pentru fiecare, se trece
+prin operatiile ce se doresc efectuate. Se incearca apoi adaugarea unui produs
+in cart-ul din marketplace sau scoaterea unui obiect, operatii transparente
+pentru consumer, fiind implementate in marketplace.
+
+Fisierul - marketplace.py
+
+Acesta contine implementarile tuturor functiilor din schelet pentru rulari
+in paralel, folosind lock-uri. Mai jos se va prezenta ideea sumara a
+implementarii fara a mai fi luate functiile la rand.
+Pentru inregistrarea id-urilor s-a folosit un "numarator" incremental care sa
+garanteze ca fiecare thread are un id unic.
+Pe partea de producator, s-a urmat ideea de adaugare a produselor doar atunci
+cand este loc, fiecare producator avand o lista de produse.
+Pe partea de consumator:
+	- Daca se doreste rezervarea unui element se cauta prima instanta a
+	acestuia si se rezerva, adaugandu-se in propriul cart.
+	- Daca se doreste punerea la loc al unui obiect se adauga la finalul
+	listei producatorului elementul care a fost anterior rezervat.
+	- Daca se doreste finalizarea comenzii se goleste cosul, fiind intors
+	la cumparator.
+Toate functiile anterioare folosesc lock-uri pentru a evita race condition-ul.
+
